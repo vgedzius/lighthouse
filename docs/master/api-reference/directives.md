@@ -287,7 +287,9 @@ enum BelongsToManyType {
 }
 ```
 
-It assumes both the field and the relationship method to have the same name.
+### Basic Usage
+
+The field and the relationship method are assumed to have the same name.
 
 ```graphql
 type User {
@@ -296,10 +298,6 @@ type User {
 ```
 
 ```php
-<?php
-
-namespace App\Models;
-
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
@@ -312,6 +310,8 @@ class User extends Model
 }
 ```
 
+### Rename Relation
+
 The directive accepts an optional `relation` argument if your relationship method
 has a different name than the field.
 
@@ -321,22 +321,79 @@ type User {
 }
 ```
 
-When using the `type` argument with pagination style `CONNECTION`, you may create your own
-[Edge type](https://facebook.github.io/relay/graphql/connections.htm#sec-Edge-Types) which
-may have fields that resolve from the model [pivot](https://laravel.com/docs/eloquent-relationships#many-to-many)
-data. You may also add a custom field resolver for fields you want to resolve yourself.
+### Retrieving Intermediate Table Columns
 
-You may either specify the edge using the `edgetype` argument, or it will automatically
-look for a {type}Edge type to be defined. In this case it would be `RoleEdge`.
+You may want to allow accessing data that describes the relation between the models
+and is stored in the intermediate table - see [retrieving intermediate table columns in Laravel](https://laravel.com/docs/eloquent-relationships#retrieving-intermediate-table-columns).
+
+Just like in Laravel, you can access the `pivot` attribute on the models (or its alias).
+Even though this attribute is always present when querying the model through the relation,
+it may not be present when reaching the node through another path in the schema, so it is
+recommended to define the field as nullable (no `!`).
+
+The following example assumes the intermediate table between `User` and `Role` defines
+a column `meta`.
+
+```php
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
+class User extends Model
+{
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class)
+            ->withPivot('meta');
+    }
+}
+
+class Role extends Model
+{
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class)
+            ->withPivot('meta');
+    }
+}
+```
 
 ```graphql
 type User {
-  roles: [Role!]! @belongsToMany(type: CONNECTION, edgeType: "CustomRoleEdge")
+  id: ID!
+  roles: [Role!]! @belongsToMany
+  pivot: RoleUserPivot
 }
 
-type CustomRoleEdge implements Edge {
+type Role {
+  id: ID!
+  users: [Users!]! @belongsToMany
+  pivot: RoleUserPivot
+}
+
+type RoleUserPivot {
+  meta: String
+}
+```
+
+When using the `type` argument with pagination style `CONNECTION`, you may create your own [edge type](https://facebook.github.io/relay/graphql/connections.htm#sec-Edge-Types)
+that contains the attributes of the intermediate table.
+
+The custom edge type must contain at least the following two fields:
+
+- `cursor: String!`
+- `node: <RelatedModel>!` (in this case `node: Role!`)
+
+It is expected to be named `<RelatedModel>Edge` (in this case `RoleEdge`).
+Assuming the intermediate table defines a column `meta`, the definition could look like this:
+
+```graphql
+type User {
+  roles: [Role!]! @belongsToMany(type: CONNECTION)
+}
+
+type RoleEdge {
+  node: Role!
   cursor: String!
-  node: Node
   meta: String
 }
 ```
@@ -850,23 +907,26 @@ Marks an element of a GraphQL schema as no longer supported.
 directive @deprecated(
   """
   Explains why this element was deprecated, usually also including a
-  suggestion for how to access supported similar data. Formatted
-  in [Markdown](https://daringfireball.net/projects/markdown).
+  suggestion for how to access supported similar data.
+  Formatted in [Markdown](https://commonmark.org).
   """
   reason: String = "No longer supported"
-) on FIELD_DEFINITION
+) on FIELD_DEFINITION | ENUM_VALUE
 ```
 
-You can mark fields as deprecated by adding the [@deprecated](#deprecated) directive and providing a
-`reason`. Deprecated fields are not included in introspection queries unless
-requested and they can still be queried by clients.
+You can mark fields as deprecated by adding the [@deprecated](#deprecated) directive.
+It is recommended to provide a `reason` for the deprecation, as well as a suggestion on
+how to move forward.
 
 ```graphql
 type Query {
-  users: [User] @deprecated(reason: "Use the `allUsers` field")
-  allUsers: [User]
+  allUsers: [User!]! @deprecated(reason: "Use `users`")
+  users: [User!]!
 }
 ```
+
+Deprecated elements are not included in introspection queries by default,
+but they can still be queried by clients.
 
 ## @field
 
@@ -2273,7 +2333,7 @@ hold information about the total number of items.
 If you wish to use the `simplePaginate` method, set the `type` to `SIMPLE`.
 
 > Please note that the `SIMPLE` paginator does not have the attributes
-> `hasMorePages`, `lastPage` and `total`.
+> `lastPage` and `total`.
 >
 > If you need those fields, you should use the default `PAGINATOR`.
 
@@ -2321,6 +2381,9 @@ type SimplePaginatorInfo {
 
   "Number of items per page."
   perPage: Int!
+
+  "Are there more pages after this one?"
+  hasMorePages: Boolean!
 }
 ```
 

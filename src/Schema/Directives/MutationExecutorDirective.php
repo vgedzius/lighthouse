@@ -3,11 +3,11 @@
 namespace Nuwave\Lighthouse\Schema\Directives;
 
 use GraphQL\Type\Definition\ResolveInfo;
-use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Nuwave\Lighthouse\Execution\Arguments\ArgumentSet;
 use Nuwave\Lighthouse\Execution\Arguments\ResolveNested;
+use Nuwave\Lighthouse\Execution\TransactionalMutations;
 use Nuwave\Lighthouse\Schema\Values\FieldValue;
 use Nuwave\Lighthouse\Support\Contracts\ArgResolver;
 use Nuwave\Lighthouse\Support\Contracts\FieldResolver;
@@ -17,13 +17,13 @@ use Nuwave\Lighthouse\Support\Utils;
 abstract class MutationExecutorDirective extends BaseDirective implements FieldResolver, ArgResolver
 {
     /**
-     * @var \Illuminate\Database\DatabaseManager
+     * @var \Nuwave\Lighthouse\Execution\TransactionalMutations
      */
-    protected $databaseManager;
+    protected $transactionalMutations;
 
-    public function __construct(DatabaseManager $databaseManager)
+    public function __construct(TransactionalMutations $transactionalMutations)
     {
-        $this->databaseManager = $databaseManager;
+        $this->transactionalMutations = $transactionalMutations;
     }
 
     public function resolveField(FieldValue $fieldValue): FieldValue
@@ -33,24 +33,15 @@ abstract class MutationExecutorDirective extends BaseDirective implements FieldR
                 $modelClass = $this->getModelClass();
                 $model = new $modelClass();
 
-                $executeMutation = function () use ($model, $resolveInfo): Model {
-                    /** @var \Illuminate\Database\Eloquent\Model $mutated */
-                    $mutated = $this->executeMutation(
-                        $model,
-                        $resolveInfo->argumentSet
-                    );
+                return $this->transactionalMutations->execute(
+                    function () use ($model, $resolveInfo): Model {
+                        $mutated = $this->executeMutation($model, $resolveInfo->argumentSet);
+                        assert($mutated instanceof Model);
 
-                    return $mutated->refresh();
-                };
-
-                return config('lighthouse.transactional_mutations', true)
-                    ? $this
-                        ->databaseManager
-                        ->connection(
-                            $model->getConnectionName()
-                        )
-                        ->transaction($executeMutation)
-                    : $executeMutation();
+                        return $mutated->refresh();
+                    },
+                    $model->getConnectionName()
+                );
             }
         );
     }
@@ -67,12 +58,12 @@ abstract class MutationExecutorDirective extends BaseDirective implements FieldR
             // Use the name of the argument if no explicit relation name is given
             ?? $this->nodeName();
 
-        /** @var \Illuminate\Database\Eloquent\Relations\Relation $relation */
         $relation = $parent->{$relationName}();
+        assert($relation instanceof Relation);
 
-        /** @var \Illuminate\Database\Eloquent\Model $related */
         // @phpstan-ignore-next-line Relation&Builder mixin not recognized
         $related = $relation->make();
+        assert($related instanceof Model);
 
         return $this->executeMutation($related, $args, $relation);
     }

@@ -17,13 +17,12 @@ up: ## Bring up the docker-compose stack
 	docker-compose up -d
 
 .PHONY: fix
-fix: up
+fix: up ## Fix code style
 	docker-compose exec php vendor/bin/php-cs-fixer fix
 
 .PHONY: stan
 stan: up ## Runs static analysis
 	docker-compose exec php vendor/bin/phpstan
-	docker-compose exec php vendor/bin/psalm
 
 .PHONY: test
 test: up ## Runs tests with PHPUnit

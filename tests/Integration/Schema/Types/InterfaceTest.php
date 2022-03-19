@@ -5,7 +5,6 @@ namespace Tests\Integration\Schema\Types;
 use GraphQL\Type\Definition\Type;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
-use Nuwave\Lighthouse\Exceptions\DefinitionException;
 use Nuwave\Lighthouse\Schema\TypeRegistry;
 use Tests\DBTestCase;
 use Tests\Utils\Models\Team;
@@ -170,9 +169,7 @@ GRAPHQL;
 GRAPHQL;
 
         $this->expectExceptionObject(
-            new DefinitionException(
-                TypeRegistry::unresolvableAbstractTypeMapping(User::class, ['Foo', 'Team'])
-            )
+            TypeRegistry::unresolvableAbstractTypeMapping(User::class, ['Foo', 'Team'])
         );
         $this->graphQL(/** @lang GraphQL */ '
         {
@@ -207,9 +204,7 @@ GRAPHQL;
 GRAPHQL;
 
         $this->expectExceptionObject(
-            new DefinitionException(
-                TypeRegistry::unresolvableAbstractTypeMapping(User::class, [])
-            )
+            TypeRegistry::unresolvableAbstractTypeMapping(User::class, [])
         );
         $this->graphQL(/** @lang GraphQL */ '
         {
@@ -339,12 +334,17 @@ GRAPHQL;
         $this->assertEquals('PostPaginator', $result->json('data.__type.fields.0.type.name'));
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<\Tests\Utils\Models\User|\Tests\Utils\Models\Team>
+     */
     public function fetchResults(): EloquentCollection
     {
-        $users = User::all();
-        $teams = Team::all();
+        /** @var \Illuminate\Database\Eloquent\Collection<\Tests\Utils\Models\User|\Tests\Utils\Models\Team> $results */
+        $results = new EloquentCollection();
 
-        return $users->concat($teams);
+        return $results
+            ->concat(User::all())
+            ->concat(Team::all());
     }
 
     public function resolveType(): Type
