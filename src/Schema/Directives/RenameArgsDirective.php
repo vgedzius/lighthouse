@@ -27,26 +27,24 @@ GRAPHQL;
     {
         $resolver = $fieldValue->getResolver();
 
-        return $next(
-            $fieldValue->setResolver(
-                function ($root, array $args, GraphQLContext $context, ResolveInfo $resolveInfo) use ($resolver) {
-                    $argumentSet = $resolveInfo->argumentSet;
-                    $this->rename($argumentSet);
+        $fieldValue->setResolver(function ($root, array $args, GraphQLContext $context, ResolveInfo $resolveInfo) use ($resolver) {
+            $argumentSet = $resolveInfo->argumentSet;
+            $this->rename($argumentSet);
 
-                    return $resolver(
-                        $root,
-                        $argumentSet->toArray(),
-                        $context,
-                        $resolveInfo
-                    );
-                }
-            )
-        );
+            return $resolver(
+                $root,
+                $argumentSet->toArray(),
+                $context,
+                $resolveInfo
+            );
+        });
+
+        return $next($fieldValue);
     }
 
-    protected function rename(ArgumentSet &$old): void
+    protected function rename(ArgumentSet &$argumentSet): void
     {
-        foreach ($old->arguments as $name => $argument) {
+        foreach ($argumentSet->arguments as $name => $argument) {
             // Recursively apply the renaming to nested inputs.
             // We look for further ArgumentSet instances, they
             // might be contained within an array.
@@ -64,8 +62,8 @@ GRAPHQL;
             });
 
             if ($maybeRenameDirective instanceof RenameDirective) {
-                $old->arguments[$maybeRenameDirective->attributeArgValue()] = $argument;
-                unset($old->arguments[$name]);
+                $argumentSet->arguments[$maybeRenameDirective->attributeArgValue()] = $argument;
+                unset($argumentSet->arguments[$name]);
             }
         }
     }
