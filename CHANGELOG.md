@@ -14,6 +14,76 @@ You can find and compare releases at the [GitHub release page](https://github.co
 
 - Apply paginated field type definition manipulation on interfaces https://github.com/nuwave/lighthouse/pull/2012
 
+## v5.48.0
+
+### Changed
+
+- Generate classes as `final` through artisan commands https://github.com/nuwave/lighthouse/pull/2127
+
+## v5.47.1
+
+### Fixed
+
+- `RelationDirective`/`batchload_relations` will consider `null` and default connection name the same connection https://github.com/nuwave/lighthouse/pull/2125
+
+## v5.47.0
+
+### Added
+
+- Add `@convertEmptyStringsToNull` directive https://github.com/nuwave/lighthouse/pull/2123
+
+### Fixed
+
+- Allow returning `Relation` from custom builder on `@all` and `@paginate` directive https://github.com/nuwave/lighthouse/pull/2120
+
+## v5.46.2
+
+### Fixed
+
+- Respect non-default primary key in nested one-to-many relations https://github.com/nuwave/lighthouse/pull/2119
+
+## v5.46.1
+
+### Fixed
+
+- Distinguish between client-safe and non-client-safe errors in `TestResponse::assertGraphQLError()` 
+
+## v5.46.0
+
+### Added
+
+- Add method `TestResponse::assertGraphQLDebugMessage()` to test internal errors https://github.com/nuwave/lighthouse/pull/2117
+
+## v5.45.4
+
+### Fixed
+
+- Revert breaking schema change in generate pagination types https://github.com/nuwave/lighthouse/pull/2104
+
+## v5.45.3
+
+### Fixed
+
+- Annotate generated schema with correct model in paginated relations https://github.com/nuwave/lighthouse/pull/2093
+
+## v5.45.2
+
+### Fixed
+
+- Fix definition of `@clearCache` argument `idSource` https://github.com/nuwave/lighthouse/pull/2100
+
+## v5.45.1
+
+### Fixed
+
+- Fix `mget` returning false for entries https://github.com/nuwave/lighthouse/pull/2095
+
+## v5.45.0
+
+### Added
+
+- Add `@drop` directive to ignore incoming values https://github.com/nuwave/lighthouse/pull/2092
+
 ## v5.44.1
 
 ### Changed

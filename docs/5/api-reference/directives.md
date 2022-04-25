@@ -573,7 +573,7 @@ directive @can(
   """
   Statically defined arguments that are passed to `Gate::check`.
 
-  You may pass pass arbitrary GraphQL literals,
+  You may pass arbitrary GraphQL literals,
   e.g.: [1, 2, 3] or { foo: "bar" }
   """
   args: CanArgs
@@ -632,7 +632,7 @@ directive @clearCache(
   """
   Source of the parent ID to clear.
   """
-  idSource: ClearCacheId
+  idSource: ClearCacheIdSource
 
   """
   Name of the field to clear.
@@ -709,6 +709,41 @@ class ComplexityAnalyzer {
 
         return $childrenComplexity * $postComplexity;
     }
+```
+
+## @convertEmptyStringsToNull
+
+```graphql
+"""
+Replaces `""` with `null`.
+"""
+directive @convertEmptyStringsToNull on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+```
+
+Use this when there is no meaningful distinction between an empty string and null.
+
+```graphql
+type Mutation {
+  createPost(title: String @convertEmptyStringsToNull): Post!
+}
+```
+
+Usage on a field applies the conversion recursively to all inputs.
+
+```graphql
+type Mutation {
+  createPost(input: CreatePostInput!): Post! @trim
+}
+```
+
+If you want this for all your fields, consider adding this directive to your
+global field middleware in `lighthouse.php`:
+
+```php
+    'field_middleware' => [
+        \Nuwave\Lighthouse\Schema\Directives\ConvertEmptyStringsToNullDirective::class,
+        ...
+    ],
 ```
 
 ## @count
@@ -927,6 +962,29 @@ type Query {
 
 Deprecated elements are not included in introspection queries by default,
 but they can still be queried by clients.
+
+## @drop
+
+```graphql
+"""
+Ignore the user given value, don't pass it to the resolver.
+"""
+directive @drop on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
+```
+
+This is useful when you want to deprecate a field, but avoid breaking changes
+for clients that still pass the value.
+
+```graphql
+type User {
+  email: String!
+  foo: String @deprecated
+}
+
+type Mutation {
+  createUser(email: String!, foo: String @drop): User @create
+}
+```
 
 ## @field
 
